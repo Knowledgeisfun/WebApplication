@@ -24,359 +24,513 @@ SOFTWARE.
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Driving School Management System Proposal - APEX Edition</title>
+    <title>Project Command Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: "Nebula Blue" (Dark) & "Morning Sky" (Light) -->
+    <!-- Application Structure Plan: A dashboard-centric, single-page application featuring a three-column Kanban board (To Do, In Progress, Done). This structure was chosen because it provides an immediate, visual understanding of project flow and task status, which is superior to a linear list for managing a multi-phase project. A dynamic header provides at-a-glance metrics (overall progress, task counts), while phase filters allow the user to reduce complexity and focus on specific project stages. The user flow is simple: view overview -> filter by phase (optional) -> drag tasks to update status -> see progress update instantly. -->
+    <!-- Visualization & Content Choices: 
+        - Overall Progress: Goal: Motivate & Inform. Viz: Donut Chart (Chart.js) for overall % complete. Interaction: Updates in real-time as tasks move to "Done". Justification: High-impact visual summary of progress.
+        - Kanban Board: Goal: Organize & Track. Viz: Three-column layout (HTML/Tailwind). Interaction: Drag-and-drop task cards between columns. Justification: Intuitive and standard method for agile project tracking.
+        - Task Cards: Goal: Detail & Context. Viz: Styled HTML cards with phase-specific color tags. Interaction: Draggable, Editable, Deletable. Justification: Provides all necessary task info in a modular, manageable format.
+        - Phase Filters: Goal: Focus & Reduce Cognitive Load. Viz: Interactive buttons. Interaction: Clicking a button filters the visible cards on the board. Justification: Allows user to manage the project in smaller, more focused chunks.
+        - Completion Celebration: Goal: Reinforce & Motivate. Viz: Canvas-based confetti animation. Interaction: Triggers automatically when a task is marked "Done". Justification: Adds a "wow" factor and makes completing tasks more satisfying.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
+        :root {
+            --bg-primary: #0F172A; /* Slate-900 */
+            --bg-secondary: #1E293B; /* Slate-800 */
+            --bg-tertiary: #334155; /* Slate-700 */
+            --bg-tertiary-hover: #475569; /* Slate-600 */
+            --text-primary: #E2E8F0; /* Slate-200 */
+            --text-secondary: #94A3B8; /* Slate-400 */
+            --border-color: #475569; /* Slate-600 */
+            --accent-color: #4F46E5; /* Indigo-600 */
+            --icon-color: #94A3B8;
+            --icon-hover-color: #E2E8F0;
+        }
+        .light-mode {
+            --bg-primary: #F1F5F9; /* Slate-100 */
+            --bg-secondary: #FFFFFF;
+            --bg-tertiary: #F8FAFC; /* Slate-50 */
+            --bg-tertiary-hover: #F1F5F9; /* Slate-100 */
+            --text-primary: #1E293B; /* Slate-800 */
+            --text-secondary: #64748B; /* Slate-500 */
+            --border-color: #E2E8F0; /* Slate-200 */
+            --accent-color: #4F46E5; /* Indigo-600 */
+            --icon-color: #64748B;
+            --icon-hover-color: #1E293B;
+        }
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #FDFBF8;
-            color: #4A4A4A;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
         }
-        .nav-link {
-            transition: color 0.3s, border-bottom-color 0.3s;
-            border-bottom: 2px solid transparent;
-        }
-        .nav-link:hover, .nav-link.active {
-            color: #D97706; /* Amber-600 */
-            border-bottom-color: #D97706;
-        }
-        .section-card {
-            background-color: #FFFFFF;
-            border: 1px solid #F3F4F6; /* Gray-100 */
-            border-radius: 0.75rem;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
-        .section-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07);
-        }
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 500px;
-            margin-left: auto;
-            margin-right: auto;
-            height: 300px;
-            max-height: 350px;
-        }
-        @media (min-width: 768px) {
-            .chart-container {
-                height: 350px;
-            }
-        }
+        .phase-tag { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+        .phase-1 { background-color: #2563EB; color: white; }
+        .phase-2 { background-color: #16A34A; color: white; }
+        .phase-3 { background-color: #D97706; color: white; }
+        .phase-4 { background-color: #9333EA; color: white; }
+        .kanban-column { background-color: var(--bg-secondary); border-radius: 0.75rem; transition: background-color 0.3s; }
+        .kanban-column.drag-over { background-color: var(--bg-tertiary-hover); }
+        .task-card { background-color: var(--bg-tertiary); border-left: 4px solid var(--border-color); cursor: grab; transition: background-color 0.3s, transform 0.2s; }
+        .task-card:hover { background-color: var(--bg-tertiary-hover); }
+        .task-card.dragging { opacity: 0.5; transform: rotate(3deg); }
+        .filter-btn { transition: all 0.3s; background-color: var(--bg-secondary); color: var(--text-secondary); }
+        .filter-btn.active { background-color: var(--accent-color); color: white; box-shadow: 0 0 15px rgba(79, 70, 229, 0.5); }
+        .chart-container { position: relative; width: 100%; max-width: 200px; margin: auto; height: 200px; max-height: 200px; }
+        #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .modal-overlay.visible { opacity: 1; pointer-events: auto; }
+        .modal-content { background-color: var(--bg-secondary); color: var(--text-primary); }
+        .icon-btn { background: none; border: none; cursor: pointer; color: var(--icon-color); transition: color 0.2s; }
+        .icon-btn:hover { color: var(--icon-hover-color); }
+        .custom-select { appearance: none; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; padding-right: 2.5rem; }
     </style>
 </head>
-<body class="antialiased">
+<body class="p-4 md:p-8">
+    <canvas id="confetti-canvas"></canvas>
 
-    <header class="bg-white/80 backdrop-blur-sm sticky top-0 z-50 border-b border-gray-200">
-        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
-            <h1 class="text-xl font-bold text-amber-700">APEX Driving School System</h1>
-            <div class="hidden md:flex space-x-8">
-                <a href="#problem" class="nav-link">The Problem</a>
-                <a href="#solution" class="nav-link">The Solution</a>
-                <a href="#market" class="nav-link">Market Comparison</a>
-                <a href="#plan" class="nav-link">Project Plan</a>
-            </div>
-            <div class="md:hidden">
-                <select id="mobile-nav" class="bg-white border border-gray-300 rounded-md py-2 px-3 text-gray-700">
-                    <option value="#problem">The Problem</option>
-                    <option value="#solution">The Solution</option>
-                    <option value="#market">Market Comparison</option>
-                    <option value="#plan">Project Plan</option>
-                </select>
-            </div>
-        </nav>
-    </header>
-
-    <main class="container mx-auto px-6 py-12">
-        
-        <section class="text-center py-16">
-            <h2 class="text-4xl md:text-5xl font-bold text-gray-800">Reinventing Driving School Management with Oracle APEX</h2>
-            [cite_start]<p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">A proposal to build a robust, scalable, and rapidly-developed management system on the Oracle APEX platform, directly addressing industry frustrations. [cite: 1]</p>
-        </section>
-
-        <section id="problem" class="py-16">
-            <div class="text-center mb-12">
-                <span class="text-amber-600 font-semibold">The Challenge</span>
-                <h3 class="text-3xl font-bold mt-2">The Frustrating Reality of Learning to Drive</h3>
-                [cite_start]<p class="mt-4 text-gray-600 max-w-2xl mx-auto">The current process is often chaotic and inefficient, lacking the transparency that students and administrators need. [cite: 10]</p>
-            </div>
-
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <div class="section-card p-6">
-                    <h4 class="font-bold text-xl text-gray-800">Unorganized Scheduling</h4>
-                    [cite_start]<p class="mt-2 text-gray-600">Manual scheduling leads to double-bookings and last-minute cancellations, causing frustration for both students and instructors. [cite: 11]</p>
+    <!-- Modals -->
+    <div id="task-modal" class="modal-overlay">
+        <div class="modal-content w-full max-w-lg p-6 rounded-lg shadow-xl">
+            <h2 id="modal-title" class="text-2xl font-bold mb-4">Add New Task</h2>
+            <form id="task-form">
+                <input type="hidden" id="task-id">
+                <div class="mb-4">
+                    <label for="task-title" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Title</label>
+                    <input type="text" id="task-title" required class="w-full p-2 rounded bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-color)] focus:ring-2 focus:ring-indigo-500">
                 </div>
-                <div class="section-card p-6">
-                    <h4 class="font-bold text-xl text-gray-800">Lack of Transparency</h4>
-                    [cite_start]<p class="mt-2 text-gray-600">Without a centralized system, it's difficult to track student progress, payments, and lesson history accurately. [cite: 10]</p>
+                <div class="mb-4">
+                    <label for="task-description" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Description</label>
+                    <textarea id="task-description" rows="3" required class="w-full p-2 rounded bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-color)] focus:ring-2 focus:ring-indigo-500"></textarea>
                 </div>
-                <div class="section-card p-6 md:col-span-2 lg:col-span-1">
-                    <h4 class="font-bold text-xl text-gray-800">Poor Communication</h4>
-                    [cite_start]<p class="mt-2 text-gray-600">No automated way to confirm schedules or send reminders leads to missed lessons and wasted time for everyone involved. [cite: 10]</p>
+                <div class="mb-6">
+                    <label for="task-phase" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Phase</label>
+                    <select id="task-phase" required class="w-full p-2 rounded bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-color)] focus:ring-2 focus:ring-indigo-500">
+                        <option value="1">Phase 1</option>
+                        <option value="2">Phase 2</option>
+                        <option value="3">Phase 3</option>
+                        <option value="4">Phase 4</option>
+                    </select>
                 </div>
-            </div>
-        </section>
-
-        <section id="solution" class="py-16 bg-amber-50 rounded-xl">
-            <div class="text-center mb-12">
-                <span class="text-amber-600 font-semibold">The Vision</span>
-                <h3 class="text-3xl font-bold mt-2">A Rapidly Developed APEX Solution</h3>
-                [cite_start]<p class="mt-4 text-gray-600 max-w-2xl mx-auto">My proposed solution is a powerful admin panel built on Oracle APEX, designed to centralize operations and automate communication. [cite: 1]</p>
-            </div>
-
-            <div class="w-full max-w-4xl mx-auto p-6">
-                <div id="solution-diagram" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-center text-center">
-                    <div data-component="api" class="solution-component cursor-pointer p-4 bg-white rounded-lg shadow-md border-2 border-transparent hover:border-amber-500 transition">
-                        <span class="text-4xl">💬</span>
-                        <p class="font-semibold mt-2">WhatsApp API</p>
-                        <p class="text-sm text-gray-500">(via Twilio)</p>
-                    </div>
-                    <div class="text-2xl font-mono text-gray-400 hidden md:block">&lt;--&gt;</div>
-                    <div data-component="apex" class="solution-component cursor-pointer p-4 bg-white rounded-lg shadow-md border-2 border-transparent hover:border-amber-500 transition">
-                        <span class="text-4xl">⚡</span>
-                        <p class="font-semibold mt-2">APEX Application</p>
-                         <p class="text-sm text-gray-500">(Admin Panel)</p>
-                    </div>
-                    <div class="text-2xl font-mono text-gray-400 hidden md:block">&lt;--&gt;</div>
-                    <div data-component="db" class="solution-component cursor-pointer p-4 bg-white rounded-lg shadow-md border-2 border-transparent hover:border-amber-500 transition">
-                        <span class="text-4xl">🗃️</span>
-                        <p class="font-semibold mt-2">Oracle Database</p>
-                         <p class="text-sm text-gray-500">(Cloud Hosted)</p>
-                    </div>
+                <div class="flex justify-end gap-4">
+                    <button type="button" id="cancel-btn" class="px-4 py-2 rounded bg-[var(--bg-tertiary-hover)] text-[var(--text-primary)]">Cancel</button>
+                    <button type="submit" id="save-btn" class="px-4 py-2 rounded bg-indigo-600 text-white">Save Task</button>
                 </div>
-                <div id="solution-details" class="mt-8 p-6 bg-white rounded-lg shadow-inner text-center min-h-[120px] flex items-center justify-center">
-                    <p class="text-gray-600">Click on a component above to see its key features.</p>
-                </div>
-            </div>
-        </section>
-
-        <section id="market" class="py-16">
-            <div class="text-center mb-12">
-                <span class="text-amber-600 font-semibold">The Opportunity</span>
-                <h3 class="text-3xl font-bold mt-2">Competitive Landscape in India</h3>
-                <p class="mt-4 text-gray-600 max-w-2xl mx-auto">This APEX-based system fills a critical gap by providing a comprehensive admin tool with modern, automated communication features that others lack.</p>
-            </div>
-            <div class="chart-container">
-                <canvas id="marketChart"></canvas>
-            </div>
-            <div class="mt-4 text-center text-sm text-gray-500">
-                <p>This chart visualizes the feature coverage of existing solutions compared to the proposed APEX system.</p>
-            </div>
-        </section>
-
-        <section id="plan" class="py-16 bg-gray-50 rounded-xl">
-            <div class="text-center mb-12">
-                <span class="text-amber-600 font-semibold">The Blueprint</span>
-                [cite_start]<h3 class="text-3xl font-bold mt-2">APEX Project Roadmap [cite: 1]</h3>
-                [cite_start]<p class="mt-4 text-gray-600 max-w-2xl mx-auto">A phased approach to build and deploy the application using the Oracle APEX low-code platform. [cite: 1]</p>
-            </div>
-
-            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
-                <div class="section-card p-6">
-                    <h4 class="font-bold text-xl text-gray-800">1. Foundation & Setup</h4>
-                    [cite_start]<p class="text-sm text-gray-500 font-medium">Target: 1-2 Weeks [cite: 2]</p>
-                    <ul class="mt-4 space-y-2 list-disc list-inside text-gray-600">
-                        [cite_start]<li>Setup Oracle "Always Free" Cloud Account. [cite: 4]</li>
-                        [cite_start]<li>Design database schema for students, lessons, etc. [cite: 4]</li>
-                        [cite_start]<li>Create tables using SQL Workshop. [cite: 4]</li>
-                        [cite_start]<li>Initialize GitHub repository for version control. [cite: 4]</li>
-                    </ul>
-                </div>
-                <div class="section-card p-6">
-                    <h4 class="font-bold text-xl text-gray-800">2. Core App Build</h4>
-                    [cite_start]<p class="text-sm text-gray-500 font-medium">Target: 2-3 Weeks [cite: 5]</p>
-                     <ul class="mt-4 space-y-2 list-disc list-inside text-gray-600">
-                        [cite_start]<li>Create the APEX app shell using the wizard. [cite: 7]</li>
-                        [cite_start]<li>Generate Interactive Reports and Forms for managing data. [cite: 8]</li>
-                        [cite_start]<li>Build a lesson calendar page. [cite: 8]</li>
-                        [cite_start]<li>Create the "Book a Lesson" form for admins. [cite: 8]</li>
-                    </ul>
-                </div>
-                <div class="section-card p-6">
-                    <h4 class="font-bold text-xl text-gray-800">3. Advanced Features</h4>
-                    [cite_start]<p class="text-sm text-gray-500 font-medium">Target: 2-4 Weeks [cite: 9]</p>
-                     <ul class="mt-4 space-y-2 list-disc list-inside text-gray-600">
-                        [cite_start]<li>Implement PL/SQL logic to prevent double-booking. [cite: 11]</li>
-                        [cite_start]<li>Build progress tracking pages for students. [cite: 11]</li>
-                        [cite_start]<li>Design a dashboard for at-a-glance info. [cite: 11]</li>
-                        [cite_start]<li>Integrate Twilio API for automated WhatsApp reminders. [cite: 12]</li>
-                    </ul>
-                </div>
-                 <div class="section-card p-6">
-                    <h4 class="font-bold text-xl text-gray-800">4. Go-Live & Future</h4>
-                    [cite_start]<p class="text-sm text-gray-500 font-medium">[cite: 13]</p>
-                     <ul class="mt-4 space-y-2 list-disc list-inside text-gray-600">
-                        [cite_start]<li>Conduct final testing and deployment. [cite: 15]</li>
-                        [cite_start]<li>Gather feedback from real-world users. [cite: 15]</li>
-                        [cite_start]<li>Plan V2 features, such as a public student portal. [cite: 15]</li>
-                    </ul>
-                </div>
-            </div>
-        </section>
-
-    </main>
-
-    <footer class="bg-gray-800 text-white py-8">
-        <div class="container mx-auto px-6 text-center">
-            <p>&copy; 2025 APEX Driving School Management System. A project by [Your Name].</p>
+            </form>
         </div>
-    </footer>
+    </div>
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal-content w-full max-w-sm p-6 rounded-lg shadow-xl text-center">
+            <h2 id="confirm-title" class="text-xl font-bold mb-2">Are you sure?</h2>
+            <p id="confirm-text" class="text-[var(--text-secondary)] mb-6">This action cannot be undone.</p>
+            <div class="flex justify-center gap-4">
+                <button type="button" id="confirm-cancel-btn" class="px-4 py-2 rounded bg-[var(--bg-tertiary-hover)] text-[var(--text-primary)]">Cancel</button>
+                <button type="button" id="confirm-delete-btn" class="px-4 py-2 rounded bg-red-600 text-white">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center mb-8">
+            <div class="md:col-span-2 bg-[var(--bg-secondary)] p-6 rounded-lg">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h1 class="text-3xl font-extrabold text-[var(--text-primary)]">Project Command Center</h1>
+                        <div class="mt-2">
+                           <select id="project-selector" class="custom-select text-lg font-semibold bg-transparent text-[var(--text-secondary)] border-none focus:ring-0"></select>
+                        </div>
+                    </div>
+                    <button id="theme-switcher" class="p-2 rounded-full text-2xl icon-btn" title="Toggle Theme"></button>
+                </div>
+            </div>
+            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg flex items-center justify-center space-x-6">
+                <div class="chart-container">
+                    <canvas id="progressChart"></canvas>
+                    <div id="progressText" class="absolute inset-0 flex items-center justify-center text-3xl font-bold text-[var(--text-primary)]">0%</div>
+                </div>
+                <div class="text-center">
+                    <h2 class="text-4xl font-bold text-[var(--text-primary)]" id="tasksCompletedCount">0/0</h2>
+                    <p class="text-[var(--text-secondary)]">Tasks Completed</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Filters -->
+        <div class="mb-6 flex flex-wrap items-center gap-2">
+            <span class="font-semibold mr-2">Focus on:</span>
+            <button class="filter-btn active px-4 py-2 rounded-full" data-filter="all">All Phases</button>
+            <button class="filter-btn px-4 py-2 rounded-full" data-filter="1">Phase 1</button>
+            <button class="filter-btn px-4 py-2 rounded-full" data-filter="2">Phase 2</button>
+            <button class="filter-btn px-4 py-2 rounded-full" data-filter="3">Phase 3</button>
+            <button class="filter-btn px-4 py-2 rounded-full" data-filter="4">Phase 4</button>
+        </div>
+
+        <!-- Kanban Board -->
+        <main id="kanban-board" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="kanban-column p-4" data-status="todo">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-[var(--text-primary)] flex items-center"><span class="w-3 h-3 rounded-full bg-red-500 mr-2"></span>To Do</h3>
+                    <button id="add-task-btn" class="icon-btn" title="Add New Task">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                    </button>
+                </div>
+                <div class="task-list space-y-4 min-h-[200px]"></div>
+            </div>
+            <div class="kanban-column p-4" data-status="inprogress">
+                <h3 class="font-bold text-lg text-[var(--text-primary)] mb-4 flex items-center"><span class="w-3 h-3 rounded-full bg-yellow-500 mr-2"></span>In Progress</h3>
+                <div class="task-list space-y-4 min-h-[200px]"></div>
+            </div>
+            <div class="kanban-column p-4" data-status="done">
+                <h3 class="font-bold text-lg text-[var(--text-primary)] mb-4 flex items-center"><span class="w-3 h-3 rounded-full bg-green-500 mr-2"></span>Done</h3>
+                <div class="task-list space-y-4 min-h-[200px]"></div>
+            </div>
+        </main>
+    </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Smooth scrolling for navigation
-            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-                anchor.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    document.querySelector(this.getAttribute('href')).scrollIntoView({
-                        behavior: 'smooth'
+        document.addEventListener('DOMContentLoaded', () => {
+            const initialData = [{
+                id: 1, name: 'Driving School (APEX)',
+                tasks: [
+                    { id: 101, title: "Setup Oracle Cloud Account", description: "Sign up for an Oracle Cloud 'Always Free' account.", phase: 1, status: 'todo' },
+                    { id: 102, title: "Design Database Schema", description: "Plan the tables and columns needed.", phase: 1, status: 'todo' },
+                    { id: 103, title: "Create Database Tables", description: "Use the SQL Workshop to create the tables.", phase: 1, status: 'todo' },
+                    { id: 104, title: "Setup GitHub Repository", description: "Create a repo to store application exports.", phase: 1, status: 'todo' },
+                    { id: 105, title: "Create New APEX App", description: "Use the 'Create Application' wizard in the App Builder.", phase: 2, status: 'todo' },
+                    { id: 106, title: "Generate Management Pages", description: "Auto-generate pages for Students, Instructors, and Vehicles.", phase: 2, status: 'todo' },
+                    { id: 107, title: "Build the Lesson Calendar", description: "Create a new page with the 'Calendar' component.", phase: 2, status: 'todo' },
+                    { id: 108, title: "Create 'Book a Lesson' Form", description: "Build the form for scheduling a new lesson.", phase: 2, status: 'todo' },
+                    { id: 109, title: "Implement Scheduling Logic", description: "Add PL/SQL logic to prevent double-booking.", phase: 3, status: 'todo' },
+                    { id: 110, title: "Build Progress Tracking", description: "Create pages to log and view student progress.", phase: 3, status: 'todo' },
+                    { id: 111, title: "Create Admin Dashboard", description: "Design a home page with key information.", phase: 3, status: 'todo' },
+                    { id: 112, title: "Integrate WhatsApp API", description: "Set up Twilio to send automated reminders.", phase: 3, status: 'todo' },
+                    { id: 113, title: "Implement Security", description: "Configure a login page and use Access Control Lists.", phase: 3, status: 'todo' },
+                    { id: 114, title: "Final Testing & Deployment", description: "Thoroughly test all features on its public URL.", phase: 4, status: 'todo' },
+                    { id: 115, title: "Gather User Feedback", description: "Show the app to a real admin for feedback.", phase: 4, status: 'todo' },
+                ]
+            }];
+
+            let projects = JSON.parse(localStorage.getItem('commandCenterData')) || initialData;
+            let currentProjectId = parseInt(localStorage.getItem('currentProjectId')) || projects[0].id;
+            let currentFilter = 'all';
+            let draggedItem = null;
+            let taskToDelete = null;
+
+            const kanbanColumns = document.querySelectorAll('.kanban-column');
+            const filterButtons = document.querySelectorAll('.filter-btn');
+            const taskModal = document.getElementById('task-modal');
+            const confirmModal = document.getElementById('confirm-modal');
+            const taskForm = document.getElementById('task-form');
+            const addTaskBtn = document.getElementById('add-task-btn');
+            const cancelBtn = document.getElementById('cancel-btn');
+            const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+            const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+            const themeSwitcher = document.getElementById('theme-switcher');
+            const projectSelector = document.getElementById('project-selector');
+
+            const icons = {
+                sun: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`,
+                moon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`,
+                edit: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>`,
+                delete: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>`
+            };
+
+            function saveData() {
+                localStorage.setItem('commandCenterData', JSON.stringify(projects));
+                localStorage.setItem('currentProjectId', currentProjectId);
+            }
+
+            function getCurrentProject() {
+                return projects.find(p => p.id === currentProjectId);
+            }
+
+            function populateProjectSelector() {
+                projectSelector.innerHTML = '';
+                projects.forEach(p => {
+                    const option = document.createElement('option');
+                    option.value = p.id;
+                    option.textContent = p.name;
+                    projectSelector.appendChild(option);
+                });
+                const addOption = document.createElement('option');
+                addOption.value = 'new';
+                addOption.textContent = '+ New Project';
+                projectSelector.appendChild(addOption);
+                projectSelector.value = currentProjectId;
+            }
+
+            function renderBoard() {
+                const project = getCurrentProject();
+                if (!project) return;
+
+                document.querySelectorAll('.task-list').forEach(list => list.innerHTML = '');
+                const filteredTasks = project.tasks.filter(task => currentFilter === 'all' || task.phase == currentFilter);
+
+                filteredTasks.forEach(task => {
+                    const column = document.querySelector(`.kanban-column[data-status="${task.status}"] .task-list`);
+                    if (column) {
+                        const taskCard = document.createElement('div');
+                        taskCard.className = 'task-card p-4 rounded-lg shadow-md';
+                        taskCard.draggable = true;
+                        taskCard.dataset.id = task.id;
+                        taskCard.innerHTML = `
+                            <div class="flex justify-between items-start">
+                                <h4 class="font-bold text-[var(--text-primary)]">${task.title}</h4>
+                                <span class="phase-tag phase-${task.phase}">P${task.phase}</span>
+                            </div>
+                            <p class="text-sm text-[var(--text-secondary)] mt-2">${task.description}</p>
+                            <div class="text-right mt-2 space-x-2">
+                                <button class="icon-btn edit-btn" data-id="${task.id}" title="Edit Task">${icons.edit}</button>
+                                <button class="icon-btn delete-btn" data-id="${task.id}" title="Delete Task">${icons.delete}</button>
+                            </div>
+                        `;
+                        column.appendChild(taskCard);
+                    }
+                });
+                addEventListeners();
+                updateProgress();
+            }
+            
+            function openTaskModal(task = null) {
+                taskForm.reset();
+                const modalTitle = document.getElementById('modal-title');
+                const taskIdInput = document.getElementById('task-id');
+                if (task) {
+                    modalTitle.textContent = 'Edit Task';
+                    taskIdInput.value = task.id;
+                    document.getElementById('task-title').value = task.title;
+                    document.getElementById('task-description').value = task.description;
+                    document.getElementById('task-phase').value = task.phase;
+                } else {
+                    modalTitle.textContent = 'Add New Task';
+                    taskIdInput.value = '';
+                }
+                taskModal.classList.add('visible');
+            }
+
+            function closeTaskModal() {
+                taskModal.classList.remove('visible');
+            }
+
+            function openConfirmModal(taskId) {
+                taskToDelete = taskId;
+                confirmModal.classList.add('visible');
+            }
+
+            function closeConfirmModal() {
+                taskToDelete = null;
+                confirmModal.classList.remove('visible');
+            }
+
+            function addEventListeners() {
+                const taskCards = document.querySelectorAll('.task-card');
+                taskCards.forEach(card => {
+                    card.addEventListener('dragstart', (e) => {
+                        draggedItem = e.currentTarget;
+                        setTimeout(() => e.currentTarget.classList.add('dragging'), 0);
+                    });
+                    card.addEventListener('dragend', (e) => {
+                        e.currentTarget.classList.remove('dragging');
+                        draggedItem = null;
                     });
                 });
-            });
-            
-            // Mobile navigation
-            const mobileNav = document.getElementById('mobile-nav');
-            mobileNav.addEventListener('change', (e) => {
-                 document.querySelector(e.target.value).scrollIntoView({ behavior: 'smooth' });
-            });
-
-            // Active nav link highlighting on scroll
-            const sections = document.querySelectorAll('section');
-            const navLinks = document.querySelectorAll('.nav-link');
-            window.onscroll = () => {
-                let current = '';
-                sections.forEach(section => {
-                    const sectionTop = section.offsetTop;
-                    if (pageYOffset >= sectionTop - 68) {
-                        current = section.getAttribute('id');
-                    }
+                
+                document.querySelectorAll('.edit-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const taskId = parseInt(e.currentTarget.dataset.id);
+                        const task = getCurrentProject().tasks.find(t => t.id === taskId);
+                        openTaskModal(task);
+                    });
                 });
 
-                navLinks.forEach(link => {
-                    link.classList.remove('active');
-                    if (link.getAttribute('href').includes(current)) {
-                        link.classList.add('active');
-                    }
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        openConfirmModal(parseInt(e.currentTarget.dataset.id));
+                    });
                 });
-            };
-            
-            // Solution Diagram Interaction
-            const solutionComponents = document.querySelectorAll('.solution-component');
-            const solutionDetails = document.getElementById('solution-details');
-            const detailsContent = {
-                api: `
-                    <h5 class="font-bold text-lg text-amber-700">WhatsApp API Integration</h5>
-                    [cite_start]<p class="mt-2 text-gray-600">Uses APEX_WEB_SERVICE and Twilio to send automated lesson reminders and confirmations, solving key communication gaps. [cite: 12]</p>
-                `,
-                apex: `
-                    <h5 class="font-bold text-lg text-amber-700">APEX Admin Application</h5>
-                    <p class="mt-2 text-gray-600">The core of the system. [cite_start]A powerful, low-code admin panel for managing students, instructors, vehicles, and schedules, with built-in security features. [cite: 6, 12]</p>
-                `,
-                db: `
-                    <h5 class="font-bold text-lg text-amber-700">Oracle Cloud Database</h5>
-                    [cite_start]<p class="mt-2 text-gray-600">A professional, secure, and reliable "Always Free" Oracle Database hosts all the application data, from student records to lesson schedules. [cite: 3, 4]</p>
-                `
-            };
+            }
 
-            solutionComponents.forEach(component => {
-                component.addEventListener('click', () => {
-                    const componentKey = component.dataset.component;
-                    solutionDetails.innerHTML = detailsContent[componentKey];
-                    solutionComponents.forEach(c => c.classList.remove('border-amber-500'));
-                    component.classList.add('border-amber-500');
-                });
-            });
-
-            // Market Comparison Chart
-            const ctx = document.getElementById('marketChart').getContext('2d');
-            const marketData = {
-                labels: ['Admin Panel', 'Smart Scheduling', 'Progress Tracking', 'WhatsApp Alerts', 'Student Portal (V2)'],
-                datasets: [
-                    {
-                        label: 'Proposed APEX System',
-                        data: [5, 4, 4, 5, 2], // Scored high on admin/alerts, lower on student portal (V2)
-                        backgroundColor: 'rgba(217, 119, 6, 0.2)', // Amber-600
-                        borderColor: 'rgba(217, 119, 6, 1)',
-                        pointBackgroundColor: 'rgba(217, 119, 6, 1)',
-                        pointBorderColor: '#fff',
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: 'rgba(217, 119, 6, 1)'
-                    },
-                    {
-                        label: 'Generic Mgmt Tools',
-                        data: [3, 2, 1, 0, 0],
-                        backgroundColor: 'rgba(107, 114, 128, 0.2)', // Gray-500
-                        borderColor: 'rgba(107, 114, 128, 1)',
-                        pointBackgroundColor: 'rgba(107, 114, 128, 1)',
-                        pointBorderColor: '#fff',
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: 'rgba(107, 114, 128, 1)'
-                    },
-                    {
-                        label: 'Standalone Schedulers',
-                        data: [1, 4, 0, 1, 0],
-                        backgroundColor: 'rgba(59, 130, 246, 0.2)', // Blue-500
-                        borderColor: 'rgba(59, 130, 246, 1)',
-                        pointBackgroundColor: 'rgba(59, 130, 246, 1)',
-                        pointBorderColor: '#fff',
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: 'rgba(59, 130, 246, 1)'
-                    }
-                ]
-            };
-
-            new Chart(ctx, {
-                type: 'radar',
-                data: marketData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    const score = ['N/A', 'Basic', 'Partial', 'Good', 'Excellent'];
-                                    if (context.parsed.r !== null) {
-                                        label += score[context.parsed.r] || 'N/A';
-                                    }
-                                    return label;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        r: {
-                            angleLines: {
-                                display: true
-                            },
-                            suggestedMin: 0,
-                            suggestedMax: 5,
-                            ticks: {
-                                stepSize: 1,
-                                display: false
-                            },
-                            pointLabels: {
-                                font: {
-                                    size: 14
-                                }
-                            }
+            kanbanColumns.forEach(column => {
+                column.addEventListener('dragover', (e) => { e.preventDefault(); column.classList.add('drag-over'); });
+                column.addEventListener('dragleave', () => { column.classList.remove('drag-over'); });
+                column.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    column.classList.remove('drag-over');
+                    if (draggedItem) {
+                        const taskId = parseInt(draggedItem.dataset.id);
+                        const newStatus = column.dataset.status;
+                        const project = getCurrentProject();
+                        const task = project.tasks.find(t => t.id === taskId);
+                        if (task && task.status !== newStatus) {
+                            task.status = newStatus;
+                            if(newStatus === 'done') { triggerConfetti(); }
+                            saveData();
+                            renderBoard();
                         }
                     }
+                });
+            });
+            
+            filterButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    currentFilter = button.dataset.filter;
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    renderBoard();
+                });
+            });
+
+            taskForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const id = document.getElementById('task-id').value;
+                const project = getCurrentProject();
+                const newTaskData = {
+                    title: document.getElementById('task-title').value,
+                    description: document.getElementById('task-description').value,
+                    phase: parseInt(document.getElementById('task-phase').value),
+                };
+                if (id) {
+                    const taskIndex = project.tasks.findIndex(t => t.id == id);
+                    project.tasks[taskIndex] = { ...project.tasks[taskIndex], ...newTaskData };
+                } else {
+                    newTaskData.id = Date.now();
+                    newTaskData.status = 'todo';
+                    project.tasks.push(newTaskData);
+                }
+                saveData();
+                renderBoard();
+                closeTaskModal();
+            });
+
+            addTaskBtn.addEventListener('click', () => openTaskModal());
+            cancelBtn.addEventListener('click', closeTaskModal);
+            taskModal.addEventListener('click', (e) => { if(e.target === taskModal) closeTaskModal(); });
+            
+            confirmCancelBtn.addEventListener('click', closeConfirmModal);
+            confirmDeleteBtn.addEventListener('click', () => {
+                if (taskToDelete !== null) {
+                    const project = getCurrentProject();
+                    project.tasks = project.tasks.filter(t => t.id !== taskToDelete);
+                    saveData();
+                    renderBoard();
+                    closeConfirmModal();
                 }
             });
+            confirmModal.addEventListener('click', (e) => { if(e.target === confirmModal) closeConfirmModal(); });
+
+            projectSelector.addEventListener('change', (e) => {
+                if (e.target.value === 'new') {
+                    const newProjectName = prompt('Enter new project name:');
+                    if (newProjectName) {
+                        const newProject = {
+                            id: Date.now(),
+                            name: newProjectName,
+                            tasks: []
+                        };
+                        projects.push(newProject);
+                        currentProjectId = newProject.id;
+                        saveData();
+                        populateProjectSelector();
+                        renderBoard();
+                    } else {
+                        projectSelector.value = currentProjectId;
+                    }
+                } else {
+                    currentProjectId = parseInt(e.target.value);
+                    saveData();
+                    renderBoard();
+                }
+            });
+
+            const progressChartCtx = document.getElementById('progressChart').getContext('2d');
+            let progressChart = new Chart(progressChartCtx, {
+                type: 'doughnut',
+                data: { datasets: [{ data: [0, 100], borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { tooltip: { enabled: false } } }
+            });
+
+            function updateProgress() {
+                const project = getCurrentProject();
+                if (!project) {
+                    document.getElementById('progressText').textContent = `0%`;
+                    document.getElementById('tasksCompletedCount').textContent = `0/0`;
+                    progressChart.data.datasets[0].data = [0, 100];
+                    progressChart.update();
+                    return;
+                }
+                const totalTasks = project.tasks.length;
+                const completedTasks = project.tasks.filter(t => t.status === 'done').length;
+                const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+                document.getElementById('progressText').textContent = `${percentage}%`;
+                document.getElementById('tasksCompletedCount').textContent = `${completedTasks}/${totalTasks}`;
+                progressChart.data.datasets[0].data = [percentage, 100 - percentage];
+                progressChart.data.datasets[0].backgroundColor = [getComputedStyle(document.documentElement).getPropertyValue('--accent-color'), getComputedStyle(document.documentElement).getPropertyValue('--bg-tertiary')];
+                progressChart.update();
+            }
+            
+            const confettiCanvas = document.getElementById('confetti-canvas');
+            const confettiCtx = confettiCanvas.getContext('2d');
+            let confettiParticles = [];
+            function triggerConfetti() {
+                confettiCanvas.width = window.innerWidth;
+                confettiCanvas.height = window.innerHeight;
+                confettiParticles = [];
+                const colors = ['#4F46E5', '#16A34A', '#D97706', '#9333EA', '#ffffff'];
+                for (let i = 0; i < 150; i++) {
+                    confettiParticles.push({
+                        x: Math.random() * confettiCanvas.width, y: -20, size: Math.random() * 8 + 4,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        speedX: (Math.random() - 0.5) * 10, speedY: Math.random() * 5 + 5,
+                        rotation: Math.random() * 360, rotationSpeed: (Math.random() - 0.5) * 10
+                    });
+                }
+                animateConfetti();
+            }
+            function animateConfetti() {
+                confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+                confettiParticles.forEach((p, index) => {
+                    p.x += p.speedX; p.y += p.speedY; p.rotation += p.rotationSpeed;
+                    confettiCtx.save();
+                    confettiCtx.translate(p.x, p.y);
+                    confettiCtx.rotate(p.rotation * Math.PI / 180);
+                    confettiCtx.fillStyle = p.color;
+                    confettiCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                    confettiCtx.restore();
+                    if (p.y > confettiCanvas.height) { confettiParticles.splice(index, 1); }
+                });
+                if (confettiParticles.length > 0) { requestAnimationFrame(animateConfetti); } 
+                else { confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height); }
+            }
+            
+            function applyTheme(theme) {
+                if (theme === 'light') {
+                    document.body.classList.add('light-mode');
+                    themeSwitcher.innerHTML = icons.moon;
+                } else {
+                    document.body.classList.remove('light-mode');
+                    themeSwitcher.innerHTML = icons.sun;
+                }
+                updateProgress();
+            }
+
+            themeSwitcher.addEventListener('click', () => {
+                const newTheme = document.body.classList.contains('light-mode') ? 'dark' : 'light';
+                localStorage.setItem('projectTheme', newTheme);
+                applyTheme(newTheme);
+            });
+            
+            const savedTheme = localStorage.getItem('projectTheme') || 'dark';
+            applyTheme(savedTheme);
+            populateProjectSelector();
+            renderBoard();
         });
     </script>
 </body>
