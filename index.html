@@ -1,517 +1,484 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Command Center</title>
+    <title>KJ Driving School - Pallikunnu, Wayanad</title>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Google Fonts: Poppins (English) and Manjari (Malayalam) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Chosen Palette: "Nebula Blue" (Dark) & "Morning Sky" (Light) -->
-    <!-- Application Structure Plan: A dashboard-centric, single-page application featuring a three-column Kanban board (To Do, In Progress, Done). This structure was chosen because it provides an immediate, visual understanding of project flow and task status, which is superior to a linear list for managing a multi-phase project. A dynamic header provides at-a-glance metrics (overall progress, task counts), while phase filters allow the user to reduce complexity and focus on specific project stages. The user flow is simple: view overview -> filter by phase (optional) -> drag tasks to update status -> see progress update instantly. -->
-    <!-- Visualization & Content Choices: 
-        - Overall Progress: Goal: Motivate & Inform. Viz: Donut Chart (Chart.js) for overall % complete. Interaction: Updates in real-time as tasks move to "Done". Justification: High-impact visual summary of progress.
-        - Kanban Board: Goal: Organize & Track. Viz: Three-column layout (HTML/Tailwind). Interaction: Drag-and-drop task cards between columns. Justification: Intuitive and standard method for agile project tracking.
-        - Task Cards: Goal: Detail & Context. Viz: Styled HTML cards with phase-specific color tags. Interaction: Draggable, Editable, Deletable. Justification: Provides all necessary task info in a modular, manageable format.
-        - Phase Filters: Goal: Focus & Reduce Cognitive Load. Viz: Interactive buttons. Interaction: Clicking a button filters the visible cards on the board. Justification: Allows user to manage the project in smaller, more focused chunks.
-        - Completion Celebration: Goal: Reinforce & Motivate. Viz: Canvas-based confetti animation. Interaction: Triggers automatically when a task is marked "Done". Justification: Adds a "wow" factor and makes completing tasks more satisfying.
-    -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <link href="https://fonts.googleapis.com/css2?family=Manjari:wght@400;700&family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
     <style>
-        :root {
-            --bg-primary: #0F172A; /* Slate-900 */
-            --bg-secondary: #1E293B; /* Slate-800 */
-            --bg-tertiary: #334155; /* Slate-700 */
-            --bg-tertiary-hover: #475569; /* Slate-600 */
-            --text-primary: #E2E8F0; /* Slate-200 */
-            --text-secondary: #94A3B8; /* Slate-400 */
-            --border-color: #475569; /* Slate-600 */
-            --accent-color: #4F46E5; /* Indigo-600 */
-            --icon-color: #94A3B8;
-            --icon-hover-color: #E2E8F0;
-        }
-        .light-mode {
-            --bg-primary: #F1F5F9; /* Slate-100 */
-            --bg-secondary: #FFFFFF;
-            --bg-tertiary: #F8FAFC; /* Slate-50 */
-            --bg-tertiary-hover: #F1F5F9; /* Slate-100 */
-            --text-primary: #1E293B; /* Slate-800 */
-            --text-secondary: #64748B; /* Slate-500 */
-            --border-color: #E2E8F0; /* Slate-200 */
-            --accent-color: #4F46E5; /* Indigo-600 */
-            --icon-color: #64748B;
-            --icon-hover-color: #1E293B;
-        }
+        /* Apply custom fonts */
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            transition: background-color 0.3s, color 0.3s;
+            font-family: 'Poppins', sans-serif;
+            scroll-behavior: smooth;
         }
-        .phase-tag { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-        .phase-1 { background-color: #2563EB; color: white; }
-        .phase-2 { background-color: #16A34A; color: white; }
-        .phase-3 { background-color: #D97706; color: white; }
-        .phase-4 { background-color: #9333EA; color: white; }
-        .kanban-column { background-color: var(--bg-secondary); border-radius: 0.75rem; transition: background-color 0.3s; }
-        .kanban-column.drag-over { background-color: var(--bg-tertiary-hover); }
-        .task-card { background-color: var(--bg-tertiary); border-left: 4px solid var(--border-color); cursor: grab; transition: background-color 0.3s, transform 0.2s; }
-        .task-card:hover { background-color: var(--bg-tertiary-hover); }
-        .task-card.dragging { opacity: 0.5; transform: rotate(3deg); }
-        .filter-btn { transition: all 0.3s; background-color: var(--bg-secondary); color: var(--text-secondary); }
-        .filter-btn.active { background-color: var(--accent-color); color: white; box-shadow: 0 0 15px rgba(79, 70, 229, 0.5); }
-        .chart-container { position: relative; width: 100%; max-width: 200px; margin: auto; height: 200px; max-height: 200px; }
-        #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; }
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
-        .modal-overlay.visible { opacity: 1; pointer-events: auto; }
-        .modal-content { background-color: var(--bg-secondary); color: var(--text-primary); }
-        .icon-btn { background: none; border: none; cursor: pointer; color: var(--icon-color); transition: color 0.2s; }
-        .icon-btn:hover { color: var(--icon-hover-color); }
-        .custom-select { appearance: none; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; padding-right: 2.5rem; }
+        .font-malayalam {
+            font-family: 'Manjari', sans-serif;
+        }
+        
+        /* Custom styles for the language switcher toggle */
+        .toggle-checkbox:checked {
+            transform: translateX(16px);
+            border-color: #0d9488; /* teal-600 */
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #0d9488; /* teal-600 */
+        }
+        
+        /* Hero section background */
+        .hero-bg {
+            background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('https://images.unsplash.com/photo-1599432656933-136d1ec59b67?q=80&w=1932&auto=format&fit=crop') no-repeat center center;
+            background-size: cover;
+            background-attachment: fixed;
+        }
+
+        /* Animation for elements on scroll */
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
     </style>
 </head>
-<body class="p-4 md:p-8">
-    <canvas id="confetti-canvas"></canvas>
+<body class="bg-slate-50 text-slate-800">
 
-    <!-- Modals -->
-    <div id="task-modal" class="modal-overlay">
-        <div class="modal-content w-full max-w-lg p-6 rounded-lg shadow-xl">
-            <h2 id="modal-title" class="text-2xl font-bold mb-4">Add New Task</h2>
-            <form id="task-form">
-                <input type="hidden" id="task-id">
-                <div class="mb-4">
-                    <label for="task-title" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Title</label>
-                    <input type="text" id="task-title" required class="w-full p-2 rounded bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-color)] focus:ring-2 focus:ring-indigo-500">
+    <!-- Header & Navigation -->
+    <header class="bg-white/80 backdrop-blur-lg fixed top-0 left-0 right-0 z-50 shadow-md">
+        <div class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <!-- Logo -->
+            <a href="#" class="flex items-center space-x-3">
+                <svg class="w-12 h-12 text-teal-600" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M25 20 L25 80 L40 80 L40 55 L55 80 L70 80 L50 50 L70 20 L55 20 L40 45 L40 20 Z" fill="currentColor"/>
+                    <path d="M75 20 L75 80 L90 80 L90 20 Z" fill="currentColor"/>
+                </svg>
+                <div class="text-xl font-bold text-teal-700 hidden sm:block">
+                    <span data-lang="en">KJ Driving School</span>
+                    <span data-lang="ml" class="font-malayalam hidden">കെ ജെ ഡ്രൈവിംഗ് സ്കൂൾ</span>
                 </div>
-                <div class="mb-4">
-                    <label for="task-description" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Description</label>
-                    <textarea id="task-description" rows="3" required class="w-full p-2 rounded bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-color)] focus:ring-2 focus:ring-indigo-500"></textarea>
+            </a>
+
+            <!-- Desktop Navigation Links -->
+            <nav class="hidden md:flex space-x-8 items-center">
+                <a href="#about" class="text-slate-600 hover:text-teal-600 transition duration-300" data-lang="en">About</a>
+                <a href="#about" class="text-slate-600 hover:text-teal-600 transition duration-300 font-malayalam hidden" data-lang="ml">ഞങ്ങളെക്കുറിച്ച്</a>
+                <a href="#why-us" class="text-slate-600 hover:text-teal-600 transition duration-300" data-lang="en">Why Us</a>
+                <a href="#why-us" class="text-slate-600 hover:text-teal-600 transition duration-300 font-malayalam hidden" data-lang="ml">എന്തുകൊണ്ട് ഞങ്ങൾ</a>
+                <a href="#courses" class="text-slate-600 hover:text-teal-600 transition duration-300" data-lang="en">Courses</a>
+                <a href="#courses" class="text-slate-600 hover:text-teal-600 transition duration-300 font-malayalam hidden" data-lang="ml">കോഴ്സുകൾ</a>
+                <a href="#contact" class="text-slate-600 hover:text-teal-600 transition duration-300" data-lang="en">Contact</a>
+                <a href="#contact" class="text-slate-600 hover:text-teal-600 transition duration-300 font-malayalam hidden" data-lang="ml">ബന്ധപ്പെടുക</a>
+            </nav>
+
+            <!-- Language Switcher & Mobile Menu Button -->
+            <div class="flex items-center">
+                <div class="hidden md:flex items-center space-x-2">
+                    <span class="text-sm font-semibold text-slate-700">EN</span>
+                    <div class="relative inline-block w-10 mr-2 align-middle select-none">
+                        <input type="checkbox" name="toggle" id="language-toggle-desktop" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-2 appearance-none cursor-pointer transition-transform duration-200 ease-in"/>
+                        <label for="language-toggle-desktop" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer"></label>
+                    </div>
+                    <span class="text-sm font-semibold text-slate-700 font-malayalam">മലയാളം</span>
                 </div>
-                <div class="mb-6">
-                    <label for="task-phase" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Phase</label>
-                    <select id="task-phase" required class="w-full p-2 rounded bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-color)] focus:ring-2 focus:ring-indigo-500">
-                        <option value="1">Phase 1</option>
-                        <option value="2">Phase 2</option>
-                        <option value="3">Phase 3</option>
-                        <option value="4">Phase 4</option>
-                    </select>
-                </div>
-                <div class="flex justify-end gap-4">
-                    <button type="button" id="cancel-btn" class="px-4 py-2 rounded bg-[var(--bg-tertiary-hover)] text-[var(--text-primary)]">Cancel</button>
-                    <button type="submit" id="save-btn" class="px-4 py-2 rounded bg-indigo-600 text-white">Save Task</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    <div id="confirm-modal" class="modal-overlay">
-        <div class="modal-content w-full max-w-sm p-6 rounded-lg shadow-xl text-center">
-            <h2 id="confirm-title" class="text-xl font-bold mb-2">Are you sure?</h2>
-            <p id="confirm-text" class="text-[var(--text-secondary)] mb-6">This action cannot be undone.</p>
-            <div class="flex justify-center gap-4">
-                <button type="button" id="confirm-cancel-btn" class="px-4 py-2 rounded bg-[var(--bg-tertiary-hover)] text-[var(--text-primary)]">Cancel</button>
-                <button type="button" id="confirm-delete-btn" class="px-4 py-2 rounded bg-red-600 text-white">Delete</button>
+                <button id="mobile-menu-button" class="md:hidden ml-4 text-slate-800">
+                    <i data-lucide="menu" id="menu-open-icon" class="w-7 h-7"></i>
+                    <i data-lucide="x" id="menu-close-icon" class="w-7 h-7 hidden"></i>
+                </button>
             </div>
         </div>
-    </div>
 
-    <div class="max-w-7xl mx-auto">
-        <!-- Header -->
-        <header class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center mb-8">
-            <div class="md:col-span-2 bg-[var(--bg-secondary)] p-6 rounded-lg">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h1 class="text-3xl font-extrabold text-[var(--text-primary)]">Project Command Center</h1>
-                        <div class="mt-2">
-                           <select id="project-selector" class="custom-select text-lg font-semibold bg-transparent text-[var(--text-secondary)] border-none focus:ring-0"></select>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="md:hidden hidden bg-white/95 backdrop-blur-lg">
+            <nav class="flex flex-col items-center space-y-4 py-4">
+                <a href="#about" class="text-slate-600 hover:text-teal-600 transition duration-300 text-lg" data-lang="en">About</a>
+                <a href="#about" class="text-slate-600 hover:text-teal-600 transition duration-300 font-malayalam hidden text-lg" data-lang="ml">ഞങ്ങളെക്കുറിച്ച്</a>
+                <a href="#why-us" class="text-slate-600 hover:text-teal-600 transition duration-300 text-lg" data-lang="en">Why Us</a>
+                <a href="#why-us" class="text-slate-600 hover:text-teal-600 transition duration-300 font-malayalam hidden text-lg" data-lang="ml">എന്തുകൊണ്ട് ഞങ്ങൾ</a>
+                <a href="#courses" class="text-slate-600 hover:text-teal-600 transition duration-300 text-lg" data-lang="en">Courses</a>
+                <a href="#courses" class="text-slate-600 hover:text-teal-600 transition duration-300 font-malayalam hidden text-lg" data-lang="ml">കോഴ്സുകൾ</a>
+                <a href="#contact" class="text-slate-600 hover:text-teal-600 transition duration-300 text-lg" data-lang="en">Contact</a>
+                <a href="#contact" class="text-slate-600 hover:text-teal-600 transition duration-300 font-malayalam hidden text-lg" data-lang="ml">ബന്ധപ്പെടുക</a>
+                <div class="pt-4 border-t border-slate-200 mt-4 w-full flex justify-center">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm font-semibold text-slate-700">EN</span>
+                        <div class="relative inline-block w-10 mr-2 align-middle select-none">
+                            <input type="checkbox" name="toggle" id="language-toggle-mobile" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-2 appearance-none cursor-pointer transition-transform duration-200 ease-in"/>
+                            <label for="language-toggle-mobile" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer"></label>
+                        </div>
+                        <span class="text-sm font-semibold text-slate-700 font-malayalam">മലയാളം</span>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-bg h-screen flex items-center justify-center text-white text-center px-4">
+        <div class="container mx-auto">
+            <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-tight mb-4 reveal">
+                <span data-lang="en">Drive Your Future Forward</span>
+                <span data-lang="ml" class="font-malayalam hidden">നിങ്ങളുടെ ഭാവി മുന്നോട്ട് നയിക്കുക</span>
+            </h1>
+            <p class="text-lg md:text-2xl mb-8 text-slate-200 reveal" style="transition-delay: 200ms;">
+                <span data-lang="en">KJ Driving School, Pallikunnu, Wayanad. Your journey to the driver's seat starts here!</span>
+                <span data-lang="ml" class="font-malayalam hidden">കെ ജെ ഡ്രൈവിംഗ് സ്കൂൾ, പള്ളിക്കുന്ന്, വയനാട്. ഡ്രൈവിംഗ് സീറ്റിലേക്കുള്ള നിങ്ങളുടെ യാത്ര ഇവിടെ ആരംഭിക്കുന്നു!</span>
+            </p>
+            <a href="#contact" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-6 sm:py-4 sm:px-8 rounded-full transition duration-300 transform hover:scale-105 text-lg reveal" style="transition-delay: 400ms;">
+                <span data-lang="en">Enroll Now</span>
+                <span data-lang="ml" class="font-malayalam hidden">ഇപ്പോൾ ചേരുക</span>
+            </a>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-16 md:py-24">
+
+        <!-- About Us Section -->
+        <section id="about" class="mb-24">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl sm:text-4xl font-bold text-slate-800 reveal">
+                    <span data-lang="en">Welcome to KJ Driving School</span>
+                    <span data-lang="ml" class="font-malayalam hidden">കെ ജെ ഡ്രൈവിംഗ് സ്കൂളിലേക്ക് സ്വാഗതം</span>
+                </h2>
+                <p class="text-teal-500 mt-2 text-lg reveal" style="transition-delay: 100ms;">
+                    <span data-lang="en">Your trusted partner on the road.</span>
+                    <span data-lang="ml" class="font-malayalam hidden">വഴിയിൽ നിങ്ങളുടെ വിശ്വസ്ത പങ്കാളി.</span>
+                </p>
+            </div>
+            <div class="flex flex-col md:flex-row items-center gap-8 md:gap-12">
+                <div class="md:w-1/2 reveal" style="transition-delay: 200ms;">
+                    <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=1887&auto=format&fit=crop" alt="Owner Vinod" class="rounded-2xl shadow-2xl w-full h-full object-cover">
+                </div>
+                <div class="md:w-1/2 text-lg text-slate-600 reveal" style="transition-delay: 300ms;">
+                    <p class="mb-4" data-lang="en">
+                        Founded by <strong class="text-teal-600">Mr. Vinod</strong>, KJ Driving School is a premier training center located in the heart of <strong class="text-teal-600">Pallikunnu, Wayanad</strong>. We are dedicated to creating safe, skilled, and confident drivers.
+                    </p>
+                    <p class="mb-4 font-malayalam hidden" data-lang="ml">
+                        <strong class="text-teal-600">ശ്രീ. വിനോദ്</strong> സ്ഥാപിച്ച കെ ജെ ഡ്രൈവിംഗ് സ്കൂൾ, <strong class="text-teal-600">വയനാട്ടിലെ പള്ളിക്കുന്നിന്റെ</strong> ഹൃദയഭാഗത്ത് സ്ഥിതി ചെയ്യുന്ന ഒരു മികച്ച പരിശീലന കേന്ദ്രമാണ്. സുരക്ഷിതരും വൈദഗ്ധ്യമുള്ളവരും ആത്മവിശ്വാസമുള്ളവരുമായ ഡ്രൈവർമാരെ സൃഷ്ടിക്കാൻ ഞങ്ങൾ പ്രതിജ്ഞാബദ്ധരാണ്.
+                    </p>
+                    <p class="mb-4" data-lang="en">
+                        Our mission is to provide top-quality driving education with a focus on traffic laws, defensive driving techniques, and practical skills for both two-wheelers and four-wheelers.
+                    </p>
+                     <p class="mb-4 font-malayalam hidden" data-lang="ml">
+                        ട്രാഫിക് നിയമങ്ങൾ, പ്രതിരോധ ഡ്രൈവിംഗ് രീതികൾ, ഇരുചക്രവാഹനങ്ങൾക്കും നാലുചക്രവാഹനങ്ങൾക്കും വേണ്ട പ്രായോഗിക കഴിവുകൾ എന്നിവയ്ക്ക് ഊന്നൽ നൽകി ഉയർന്ന നിലവാരമുള്ള ഡ്രൈവിംഗ് വിദ്യാഭ്യാസം നൽകുക എന്നതാണ് ഞങ്ങളുടെ ലക്ഷ്യം.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Why Choose Us Section -->
+        <section id="why-us" class="mb-24 bg-slate-100 py-16 md:py-20 -mx-6 px-6">
+             <div class="container mx-auto">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl sm:text-4xl font-bold text-slate-800 reveal">
+                        <span data-lang="en">Why Choose Us?</span>
+                        <span data-lang="ml" class="font-malayalam hidden">എന്തുകൊണ്ട് ഞങ്ങൾ?</span>
+                    </h2>
+                    <p class="text-teal-500 mt-2 text-lg reveal" style="transition-delay: 100ms;">
+                        <span data-lang="en">Your Success is Our Priority.</span>
+                        <span data-lang="ml" class="font-malayalam hidden">നിങ്ങളുടെ വിജയമാണ് ഞങ്ങളുടെ മുൻഗണന.</span>
+                    </p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-10 text-center">
+                    <!-- Feature 1 -->
+                    <div class="bg-white p-8 rounded-2xl shadow-lg transform hover:-translate-y-2 transition-transform duration-300 reveal" style="transition-delay: 200ms;">
+                        <div class="inline-block bg-teal-100 p-4 rounded-full mb-4">
+                            <i data-lucide="users-2" class="text-teal-600 w-8 h-8"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2" data-lang="en">Expert Instructors</h3>
+                        <h3 class="text-xl font-bold mb-2 font-malayalam hidden" data-lang="ml">വിദഗ്ദ്ധരായ പരിശീലകർ</h3>
+                        <p class="text-slate-600" data-lang="en">Learn from patient, experienced, and certified professionals.</p>
+                        <p class="text-slate-600 font-malayalam hidden" data-lang="ml">ക്ഷമയും പരിചയസമ്പന്നരും സർട്ടിഫൈഡ് പ്രൊഫഷണലുകളിൽ നിന്നും പഠിക്കുക.</p>
+                    </div>
+                    <!-- Feature 2 -->
+                    <div class="bg-white p-8 rounded-2xl shadow-lg transform hover:-translate-y-2 transition-transform duration-300 reveal" style="transition-delay: 300ms;">
+                        <div class="inline-block bg-cyan-100 p-4 rounded-full mb-4">
+                            <i data-lucide="shield-check" class="text-cyan-600 w-8 h-8"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2" data-lang="en">Safety First</h3>
+                        <h3 class="text-xl font-bold mb-2 font-malayalam hidden" data-lang="ml">സുരക്ഷ പ്രധാനം</h3>
+                        <p class="text-slate-600" data-lang="en">We prioritize your safety with well-maintained, dual-control vehicles.</p>
+                        <p class="text-slate-600 font-malayalam hidden" data-lang="ml">നന്നായി പരിപാലിക്കുന്ന, ഡ്യുവൽ കൺട്രോൾ വാഹനങ്ങൾ ഉപയോഗിച്ച് നിങ്ങളുടെ സുരക്ഷയ്ക്ക് ഞങ്ങൾ മുൻഗണന നൽകുന്നു.</p>
+                    </div>
+                    <!-- Feature 3 -->
+                    <div class="bg-white p-8 rounded-2xl shadow-lg transform hover:-translate-y-2 transition-transform duration-300 reveal" style="transition-delay: 400ms;">
+                        <div class="inline-block bg-sky-100 p-4 rounded-full mb-4">
+                            <i data-lucide="calendar-clock" class="text-sky-600 w-8 h-8"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2" data-lang="en">Flexible Scheduling</h3>
+                        <h3 class="text-xl font-bold mb-2 font-malayalam hidden" data-lang="ml">ഫ്ലെക്സിബിൾ ഷെഡ്യൂളിംഗ്</h3>
+                        <p class="text-slate-600" data-lang="en">We offer flexible class timings to fit your busy schedule.</p>
+                        <p class="text-slate-600 font-malayalam hidden" data-lang="ml">നിങ്ങളുടെ തിരക്കേറിയ ഷെഡ്യൂളിന് അനുയോജ്യമായ ക്ലാസ് സമയങ്ങൾ ഞങ്ങൾ വാഗ്ദാനം ചെയ്യുന്നു.</p>
+                    </div>
+                </div>
+             </div>
+        </section>
+
+        <!-- Courses Section -->
+        <section id="courses" class="mb-24">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl sm:text-4xl font-bold text-slate-800 reveal">
+                    <span data-lang="en">Our Courses</span>
+                    <span data-lang="ml" class="font-malayalam hidden">ഞങ്ങളുടെ കോഴ്സുകൾ</span>
+                </h2>
+                <p class="text-teal-500 mt-2 text-lg reveal" style="transition-delay: 100ms;">
+                    <span data-lang="en">Packages designed for your success.</span>
+                    <span data-lang="ml" class="font-malayalam hidden">നിങ്ങളുടെ വിജയത്തിനായി രൂപകൽപ്പന ചെയ്ത പാക്കേജുകൾ.</span>
+                </p>
+            </div>
+            <div class="grid md:grid-cols-2 gap-10">
+                <!-- Four Wheeler Course -->
+                <div class="bg-white p-8 rounded-2xl shadow-lg transform hover:-translate-y-2 transition-transform duration-300 reveal" style="transition-delay: 200ms;">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-teal-100 p-3 rounded-full mr-4">
+                            <i data-lucide="car" class="text-teal-600"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-800">
+                            <span data-lang="en">Four Wheeler Training</span>
+                            <span data-lang="ml" class="font-malayalam hidden">നാലുചക്ര വാഹന പരിശീലനം</span>
+                        </h3>
+                    </div>
+                    <p class="text-slate-600 mb-4" data-lang="en">Master the 'H' test and road driving with our comprehensive 30-class package. Perfect for new learners.</p>
+                    <p class="text-slate-600 mb-4 font-malayalam hidden" data-lang="ml">ഞങ്ങളുടെ 30 ക്ലാസ് പാക്കേജ് ഉപയോഗിച്ച് 'H' ടെസ്റ്റും റോഡ് ഡ്രൈവിംഗും പഠിക്കുക. പുതിയ പഠിതാക്കൾക്ക് അനുയോജ്യം.</p>
+                    <div class="text-3xl font-extrabold text-teal-600">₹10,000</div>
+                    <div class="text-sm text-slate-500" data-lang="en">for 30 Classes</div>
+                    <div class="text-sm text-slate-500 font-malayalam hidden" data-lang="ml">30 ക്ലാസുകൾക്ക്</div>
+                </div>
+
+                <!-- Two Wheeler Course -->
+                <div class="bg-white p-8 rounded-2xl shadow-lg transform hover:-translate-y-2 transition-transform duration-300 reveal" style="transition-delay: 300ms;">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-cyan-100 p-3 rounded-full mr-4">
+                            <i data-lucide="bike" class="text-cyan-600"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-800">
+                            <span data-lang="en">Two Wheeler Training</span>
+                            <span data-lang="ml" class="font-malayalam hidden">ഇരുചക്ര വാഹന പരിശീലനം</span>
+                        </h3>
+                    </div>
+                    <p class="text-slate-600 mb-4" data-lang="en">Confidently navigate the '8' test and city traffic. Our course covers everything from basics to advanced control.</p>
+                    <p class="text-slate-600 mb-4 font-malayalam hidden" data-lang="ml">'8' ടെസ്റ്റും നഗരത്തിലെ ട്രാഫിക്കും ആത്മവിശ്വാസത്തോടെ നേരിടുക. അടിസ്ഥാനം മുതൽ വിപുലമായ നിയന്ത്രണം വരെ ഞങ്ങളുടെ കോഴ്സ് ഉൾക്കൊള്ളുന്നു.</p>
+                    <div class="text-3xl font-extrabold text-cyan-600">
+                        <span data-lang="en">Contact for Price</span>
+                        <span data-lang="ml" class="font-malayalam hidden">വിലയ്ക്ക് ബന്ധപ്പെടുക</span>
+                    </div>
+                     <div class="text-sm text-slate-500" data-lang="en">Flexible Packages</div>
+                    <div class="text-sm text-slate-500 font-malayalam hidden" data-lang="ml">ഫ്ലെക്സിബിൾ പാക്കേജുകൾ</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testimonials Section -->
+        <section id="testimonials" class="mb-24">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl sm:text-4xl font-bold text-slate-800 reveal">
+                    <span data-lang="en">What Our Students Say</span>
+                    <span data-lang="ml" class="font-malayalam hidden">ഞങ്ങളുടെ വിദ്യാർത്ഥികൾ പറയുന്നു</span>
+                </h2>
+                <p class="text-teal-500 mt-2 text-lg reveal" style="transition-delay: 100ms;">
+                    <span data-lang="en">Stories from the driver's seat.</span>
+                    <span data-lang="ml" class="font-malayalam hidden">ഡ്രൈവിംഗ് സീറ്റിൽ നിന്നുള്ള കഥകൾ.</span>
+                </p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div class="bg-white p-8 rounded-2xl shadow-lg reveal" style="transition-delay: 200ms;">
+                    <div class="flex items-center mb-4">
+                        <img class="w-12 h-12 rounded-full mr-4 object-cover" src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1888&auto=format&fit=crop" alt="Student Anjali">
+                        <div>
+                            <h4 class="font-bold text-slate-800">Anjali R.</h4>
+                            <p class="text-sm text-slate-500" data-lang="en">Passed my test on the first try!</p>
+                            <p class="text-sm text-slate-500 font-malayalam hidden" data-lang="ml">ആദ്യ ശ്രമത്തിൽ തന്നെ ടെസ്റ്റ് പാസായി!</p>
                         </div>
                     </div>
-                    <button id="theme-switcher" class="p-2 rounded-full text-2xl icon-btn" title="Toggle Theme"></button>
+                    <p class="text-slate-600 italic">
+                        <span data-lang="en">"The instructors at KJ were incredibly patient and made me feel so comfortable behind the wheel. I couldn't have done it without them. Highly recommended!"</span>
+                        <span data-lang="ml" class="font-malayalam hidden">"കെ ജെയിലെ പരിശീലകർ അവിശ്വസനീയമാംവിധം ക്ഷമയുള്ളവരായിരുന്നു, അവർ എന്നെ ഡ്രൈവിംഗ് സീറ്റിൽ വളരെ കംഫർട്ടബിൾ ആക്കി. അവരില്ലായിരുന്നെങ്കിൽ എനിക്കിത് ചെയ്യാൻ കഴിയില്ലായിരുന്നു. തീർച്ചയായും ശുപാർശ ചെയ്യുന്നു!"</span>
+                    </p>
+                </div>
+                <div class="bg-white p-8 rounded-2xl shadow-lg reveal" style="transition-delay: 300ms;">
+                    <div class="flex items-center mb-4">
+                        <img class="w-12 h-12 rounded-full mr-4 object-cover" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1887&auto=format&fit=crop" alt="Student Biju M.">
+                        <div>
+                            <h4 class="font-bold text-slate-800">Biju M.</h4>
+                            <p class="text-sm text-slate-500" data-lang="en">Great experience learning to ride.</p>
+                            <p class="text-sm text-slate-500 font-malayalam hidden" data-lang="ml">വണ്ടി ഓടിക്കാൻ പഠിച്ച നല്ല അനുഭവം.</p>
+                        </div>
+                    </div>
+                    <p class="text-slate-600 italic">
+                        <span data-lang="en">"I was nervous about learning to ride a bike, but Vinod sir's guidance was excellent. He focused on safety and control, and now I feel confident on the road."</span>
+                        <span data-lang="ml" class="font-malayalam hidden">"ബൈക്ക് ഓടിക്കാൻ പഠിക്കുന്നതിനെക്കുറിച്ച് എനിക്ക് പേടിയായിരുന്നു, പക്ഷേ വിനോദ് സാറിന്റെ മാർഗ്ഗനിർദ്ദേശം മികച്ചതായിരുന്നു. അദ്ദേഹം സുരക്ഷയിലും നിയന്ത്രണത്തിലും ശ്രദ്ധ കേന്ദ്രീകരിച്ചു, ഇപ്പോൾ എനിക്ക് റോഡിൽ ആത്മവിശ്വാസമുണ്ട്."</span>
+                    </p>
                 </div>
             </div>
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg flex items-center justify-center space-x-6">
-                <div class="chart-container">
-                    <canvas id="progressChart"></canvas>
-                    <div id="progressText" class="absolute inset-0 flex items-center justify-center text-3xl font-bold text-[var(--text-primary)]">0%</div>
-                </div>
-                <div class="text-center">
-                    <h2 class="text-4xl font-bold text-[var(--text-primary)]" id="tasksCompletedCount">0/0</h2>
-                    <p class="text-[var(--text-secondary)]">Tasks Completed</p>
-                </div>
-            </div>
-        </header>
+        </section>
 
-        <!-- Filters -->
-        <div class="mb-6 flex flex-wrap items-center gap-2">
-            <span class="font-semibold mr-2">Focus on:</span>
-            <button class="filter-btn active px-4 py-2 rounded-full" data-filter="all">All Phases</button>
-            <button class="filter-btn px-4 py-2 rounded-full" data-filter="1">Phase 1</button>
-            <button class="filter-btn px-4 py-2 rounded-full" data-filter="2">Phase 2</button>
-            <button class="filter-btn px-4 py-2 rounded-full" data-filter="3">Phase 3</button>
-            <button class="filter-btn px-4 py-2 rounded-full" data-filter="4">Phase 4</button>
+        <!-- Contact Section -->
+        <section id="contact">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl sm:text-4xl font-bold text-slate-800 reveal">
+                    <span data-lang="en">Get in Touch</span>
+                    <span data-lang="ml" class="font-malayalam hidden">ബന്ധപ്പെടുക</span>
+                </h2>
+                <p class="text-teal-500 mt-2 text-lg reveal" style="transition-delay: 100ms;">
+                    <span data-lang="en">Ready to start your driving journey? We're here to help!</span>
+                    <span data-lang="ml" class="font-malayalam hidden">നിങ്ങളുടെ ഡ്രൈവിംഗ് യാത്ര ആരംഭിക്കാൻ തയ്യാറാണോ? ഞങ്ങൾ സഹായിക്കാൻ തയ്യാറാണ്!</span>
+                </p>
+            </div>
+            <div class="bg-white rounded-2xl shadow-xl p-6 md:p-12 flex flex-col md:flex-row gap-10">
+                <div class="md:w-1/2 reveal" style="transition-delay: 200ms;">
+                    <h3 class="text-2xl font-bold mb-4" data-lang="en">Contact Information</h3>
+                    <h3 class="text-2xl font-bold mb-4 font-malayalam hidden" data-lang="ml">ബന്ധപ്പെടാനുള്ള വിവരങ്ങൾ</h3>
+                    <div class="space-y-4 text-slate-600">
+                        <div class="flex items-center">
+                            <i data-lucide="user" class="w-6 h-6 mr-3 text-teal-500"></i>
+                            <span>Vinod (Owner)</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i data-lucide="phone" class="w-6 h-6 mr-3 text-teal-500"></i>
+                            <span>+91 98765 43210</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i data-lucide="map-pin" class="w-6 h-6 mr-3 text-teal-500"></i>
+                            <span>KJ Driving School, Pallikunnu, Wayanad, Kerala</span>
+                        </div>
+                    </div>
+                    <div class="mt-8 rounded-lg overflow-hidden">
+                        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15636.40243171358!2d76.07172083955078!3d11.652131900000005!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ba60ac7b415b395%3A0x6762649de79a9b7f!2sPallikkunnu%2C%20Wayanad%2C%20Kerala!5e0!3m2!1sen!2sin!4v1689852135749!5m2!1sen!2sin" width="100%" height="250" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                    </div>
+                </div>
+                <div class="md:w-1/2 reveal" style="transition-delay: 300ms;">
+                    <h3 class="text-2xl font-bold mb-4" data-lang="en">Send us a Message</h3>
+                    <h3 class="text-2xl font-bold mb-4 font-malayalam hidden" data-lang="ml">ഞങ്ങൾക്ക് ഒരു സന്ദേശം അയക്കുക</h3>
+                    <form action="#" method="POST" class="space-y-4">
+                        <div>
+                            <label for="name" class="sr-only" data-lang="en">Name</label>
+                            <label for="name" class="sr-only font-malayalam hidden" data-lang="ml">പേര്</label>
+                            <input type="text" name="name" id="name" class="w-full p-3 rounded-lg bg-slate-100 border-2 border-transparent focus:border-teal-500 focus:bg-white outline-none transition" placeholder-en="Your Name" placeholder-ml="നിങ്ങളുടെ പേര്">
+                        </div>
+                        <div>
+                            <label for="phone" class="sr-only" data-lang="en">Phone</label>
+                            <label for="phone" class="sr-only font-malayalam hidden" data-lang="ml">ഫോൺ</label>
+                            <input type="tel" name="phone" id="phone" class="w-full p-3 rounded-lg bg-slate-100 border-2 border-transparent focus:border-teal-500 focus:bg-white outline-none transition" placeholder-en="Your Phone Number" placeholder-ml="നിങ്ങളുടെ ഫോൺ നമ്പർ">
+                        </div>
+                        <div>
+                            <label for="message" class="sr-only" data-lang="en">Message</label>
+                            <label for="message" class="sr-only font-malayalam hidden" data-lang="ml">സന്ദേശം</label>
+                            <textarea name="message" id="message" rows="4" class="w-full p-3 rounded-lg bg-slate-100 border-2 border-transparent focus:border-teal-500 focus:bg-white outline-none transition" placeholder-en="Your Message..." placeholder-ml="നിങ്ങളുടെ സന്ദേശം..."></textarea>
+                        </div>
+                        <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105">
+                            <span data-lang="en">Send Message</span>
+                            <span data-lang="ml" class="font-malayalam hidden">സന്ദേശം അയക്കുക</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-800 text-white py-8">
+        <div class="container mx-auto px-6 text-center text-slate-400">
+            <p>&copy; 2025 KJ Driving School. All Rights Reserved.</p>
+            <p class="mt-2" data-lang="en">Designed for Vinod, Pallikunnu, Wayanad.</p>
+            <p class="mt-2 font-malayalam hidden" data-lang="ml">വിനോദ്, പള്ളിക്കുന്ന്, വയനാട് എന്നിവർക്കായി രൂപകൽപ്പന ചെയ്തത്.</p>
         </div>
-
-        <!-- Kanban Board -->
-        <main id="kanban-board" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="kanban-column p-4" data-status="todo">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold text-lg text-[var(--text-primary)] flex items-center"><span class="w-3 h-3 rounded-full bg-red-500 mr-2"></span>To Do</h3>
-                    <button id="add-task-btn" class="icon-btn" title="Add New Task">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-                    </button>
-                </div>
-                <div class="task-list space-y-4 min-h-[200px]"></div>
-            </div>
-            <div class="kanban-column p-4" data-status="inprogress">
-                <h3 class="font-bold text-lg text-[var(--text-primary)] mb-4 flex items-center"><span class="w-3 h-3 rounded-full bg-yellow-500 mr-2"></span>In Progress</h3>
-                <div class="task-list space-y-4 min-h-[200px]"></div>
-            </div>
-            <div class="kanban-column p-4" data-status="done">
-                <h3 class="font-bold text-lg text-[var(--text-primary)] mb-4 flex items-center"><span class="w-3 h-3 rounded-full bg-green-500 mr-2"></span>Done</h3>
-                <div class="task-list space-y-4 min-h-[200px]"></div>
-            </div>
-        </main>
-    </div>
+    </footer>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const initialData = [{
-                id: 1, name: 'Driving School (APEX)',
-                tasks: [
-                    { id: 101, title: "Setup Oracle Cloud Account", description: "Sign up for an Oracle Cloud 'Always Free' account.", phase: 1, status: 'todo' },
-                    { id: 102, title: "Design Database Schema", description: "Plan the tables and columns needed.", phase: 1, status: 'todo' },
-                    { id: 103, title: "Create Database Tables", description: "Use the SQL Workshop to create the tables.", phase: 1, status: 'todo' },
-                    { id: 104, title: "Setup GitHub Repository", description: "Create a repo to store application exports.", phase: 1, status: 'todo' },
-                    { id: 105, title: "Create New APEX App", description: "Use the 'Create Application' wizard in the App Builder.", phase: 2, status: 'todo' },
-                    { id: 106, title: "Generate Management Pages", description: "Auto-generate pages for Students, Instructors, and Vehicles.", phase: 2, status: 'todo' },
-                    { id: 107, title: "Build the Lesson Calendar", description: "Create a new page with the 'Calendar' component.", phase: 2, status: 'todo' },
-                    { id: 108, title: "Create 'Book a Lesson' Form", description: "Build the form for scheduling a new lesson.", phase: 2, status: 'todo' },
-                    { id: 109, title: "Implement Scheduling Logic", description: "Add PL/SQL logic to prevent double-booking.", phase: 3, status: 'todo' },
-                    { id: 110, title: "Build Progress Tracking", description: "Create pages to log and view student progress.", phase: 3, status: 'todo' },
-                    { id: 111, title: "Create Admin Dashboard", description: "Design a home page with key information.", phase: 3, status: 'todo' },
-                    { id: 112, title: "Integrate WhatsApp API", description: "Set up Twilio to send automated reminders.", phase: 3, status: 'todo' },
-                    { id: 113, title: "Implement Security", description: "Configure a login page and use Access Control Lists.", phase: 3, status: 'todo' },
-                    { id: 114, title: "Final Testing & Deployment", description: "Thoroughly test all features on its public URL.", phase: 4, status: 'todo' },
-                    { id: 115, title: "Gather User Feedback", description: "Show the app to a real admin for feedback.", phase: 4, status: 'todo' },
-                ]
-            }];
+        // Initialize Lucide Icons
+        lucide.createIcons();
 
-            let projects = JSON.parse(localStorage.getItem('commandCenterData')) || initialData;
-            let currentProjectId = parseInt(localStorage.getItem('currentProjectId')) || projects[0].id;
-            let currentFilter = 'all';
-            let draggedItem = null;
-            let taskToDelete = null;
+        // Mobile Menu Logic
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const menuOpenIcon = document.getElementById('menu-open-icon');
+        const menuCloseIcon = document.getElementById('menu-close-icon');
 
-            const kanbanColumns = document.querySelectorAll('.kanban-column');
-            const filterButtons = document.querySelectorAll('.filter-btn');
-            const taskModal = document.getElementById('task-modal');
-            const confirmModal = document.getElementById('confirm-modal');
-            const taskForm = document.getElementById('task-form');
-            const addTaskBtn = document.getElementById('add-task-btn');
-            const cancelBtn = document.getElementById('cancel-btn');
-            const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
-            const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
-            const themeSwitcher = document.getElementById('theme-switcher');
-            const projectSelector = document.getElementById('project-selector');
-
-            const icons = {
-                sun: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`,
-                moon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`,
-                edit: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>`,
-                delete: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>`
-            };
-
-            function saveData() {
-                localStorage.setItem('commandCenterData', JSON.stringify(projects));
-                localStorage.setItem('currentProjectId', currentProjectId);
-            }
-
-            function getCurrentProject() {
-                return projects.find(p => p.id === currentProjectId);
-            }
-
-            function populateProjectSelector() {
-                projectSelector.innerHTML = '';
-                projects.forEach(p => {
-                    const option = document.createElement('option');
-                    option.value = p.id;
-                    option.textContent = p.name;
-                    projectSelector.appendChild(option);
-                });
-                const addOption = document.createElement('option');
-                addOption.value = 'new';
-                addOption.textContent = '+ New Project';
-                projectSelector.appendChild(addOption);
-                projectSelector.value = currentProjectId;
-            }
-
-            function renderBoard() {
-                const project = getCurrentProject();
-                if (!project) return;
-
-                document.querySelectorAll('.task-list').forEach(list => list.innerHTML = '');
-                const filteredTasks = project.tasks.filter(task => currentFilter === 'all' || task.phase == currentFilter);
-
-                filteredTasks.forEach(task => {
-                    const column = document.querySelector(`.kanban-column[data-status="${task.status}"] .task-list`);
-                    if (column) {
-                        const taskCard = document.createElement('div');
-                        taskCard.className = 'task-card p-4 rounded-lg shadow-md';
-                        taskCard.draggable = true;
-                        taskCard.dataset.id = task.id;
-                        taskCard.innerHTML = `
-                            <div class="flex justify-between items-start">
-                                <h4 class="font-bold text-[var(--text-primary)]">${task.title}</h4>
-                                <span class="phase-tag phase-${task.phase}">P${task.phase}</span>
-                            </div>
-                            <p class="text-sm text-[var(--text-secondary)] mt-2">${task.description}</p>
-                            <div class="text-right mt-2 space-x-2">
-                                <button class="icon-btn edit-btn" data-id="${task.id}" title="Edit Task">${icons.edit}</button>
-                                <button class="icon-btn delete-btn" data-id="${task.id}" title="Delete Task">${icons.delete}</button>
-                            </div>
-                        `;
-                        column.appendChild(taskCard);
-                    }
-                });
-                addEventListeners();
-                updateProgress();
-            }
-            
-            function openTaskModal(task = null) {
-                taskForm.reset();
-                const modalTitle = document.getElementById('modal-title');
-                const taskIdInput = document.getElementById('task-id');
-                if (task) {
-                    modalTitle.textContent = 'Edit Task';
-                    taskIdInput.value = task.id;
-                    document.getElementById('task-title').value = task.title;
-                    document.getElementById('task-description').value = task.description;
-                    document.getElementById('task-phase').value = task.phase;
-                } else {
-                    modalTitle.textContent = 'Add New Task';
-                    taskIdInput.value = '';
-                }
-                taskModal.classList.add('visible');
-            }
-
-            function closeTaskModal() {
-                taskModal.classList.remove('visible');
-            }
-
-            function openConfirmModal(taskId) {
-                taskToDelete = taskId;
-                confirmModal.classList.add('visible');
-            }
-
-            function closeConfirmModal() {
-                taskToDelete = null;
-                confirmModal.classList.remove('visible');
-            }
-
-            function addEventListeners() {
-                const taskCards = document.querySelectorAll('.task-card');
-                taskCards.forEach(card => {
-                    card.addEventListener('dragstart', (e) => {
-                        draggedItem = e.currentTarget;
-                        setTimeout(() => e.currentTarget.classList.add('dragging'), 0);
-                    });
-                    card.addEventListener('dragend', (e) => {
-                        e.currentTarget.classList.remove('dragging');
-                        draggedItem = null;
-                    });
-                });
-                
-                document.querySelectorAll('.edit-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const taskId = parseInt(e.currentTarget.dataset.id);
-                        const task = getCurrentProject().tasks.find(t => t.id === taskId);
-                        openTaskModal(task);
-                    });
-                });
-
-                document.querySelectorAll('.delete-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        openConfirmModal(parseInt(e.currentTarget.dataset.id));
-                    });
-                });
-            }
-
-            kanbanColumns.forEach(column => {
-                column.addEventListener('dragover', (e) => { e.preventDefault(); column.classList.add('drag-over'); });
-                column.addEventListener('dragleave', () => { column.classList.remove('drag-over'); });
-                column.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    column.classList.remove('drag-over');
-                    if (draggedItem) {
-                        const taskId = parseInt(draggedItem.dataset.id);
-                        const newStatus = column.dataset.status;
-                        const project = getCurrentProject();
-                        const task = project.tasks.find(t => t.id === taskId);
-                        if (task && task.status !== newStatus) {
-                            task.status = newStatus;
-                            if(newStatus === 'done') { triggerConfetti(); }
-                            saveData();
-                            renderBoard();
-                        }
-                    }
-                });
-            });
-            
-            filterButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    currentFilter = button.dataset.filter;
-                    filterButtons.forEach(btn => btn.classList.remove('active'));
-                    button.classList.add('active');
-                    renderBoard();
-                });
-            });
-
-            taskForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const id = document.getElementById('task-id').value;
-                const project = getCurrentProject();
-                const newTaskData = {
-                    title: document.getElementById('task-title').value,
-                    description: document.getElementById('task-description').value,
-                    phase: parseInt(document.getElementById('task-phase').value),
-                };
-                if (id) {
-                    const taskIndex = project.tasks.findIndex(t => t.id == id);
-                    project.tasks[taskIndex] = { ...project.tasks[taskIndex], ...newTaskData };
-                } else {
-                    newTaskData.id = Date.now();
-                    newTaskData.status = 'todo';
-                    project.tasks.push(newTaskData);
-                }
-                saveData();
-                renderBoard();
-                closeTaskModal();
-            });
-
-            addTaskBtn.addEventListener('click', () => openTaskModal());
-            cancelBtn.addEventListener('click', closeTaskModal);
-            taskModal.addEventListener('click', (e) => { if(e.target === taskModal) closeTaskModal(); });
-            
-            confirmCancelBtn.addEventListener('click', closeConfirmModal);
-            confirmDeleteBtn.addEventListener('click', () => {
-                if (taskToDelete !== null) {
-                    const project = getCurrentProject();
-                    project.tasks = project.tasks.filter(t => t.id !== taskToDelete);
-                    saveData();
-                    renderBoard();
-                    closeConfirmModal();
-                }
-            });
-            confirmModal.addEventListener('click', (e) => { if(e.target === confirmModal) closeConfirmModal(); });
-
-            projectSelector.addEventListener('change', (e) => {
-                if (e.target.value === 'new') {
-                    const newProjectName = prompt('Enter new project name:');
-                    if (newProjectName) {
-                        const newProject = {
-                            id: Date.now(),
-                            name: newProjectName,
-                            tasks: []
-                        };
-                        projects.push(newProject);
-                        currentProjectId = newProject.id;
-                        saveData();
-                        populateProjectSelector();
-                        renderBoard();
-                    } else {
-                        projectSelector.value = currentProjectId;
-                    }
-                } else {
-                    currentProjectId = parseInt(e.target.value);
-                    saveData();
-                    renderBoard();
-                }
-            });
-
-            const progressChartCtx = document.getElementById('progressChart').getContext('2d');
-            let progressChart = new Chart(progressChartCtx, {
-                type: 'doughnut',
-                data: { datasets: [{ data: [0, 100], borderWidth: 0 }] },
-                options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { tooltip: { enabled: false } } }
-            });
-
-            function updateProgress() {
-                const project = getCurrentProject();
-                if (!project) {
-                    document.getElementById('progressText').textContent = `0%`;
-                    document.getElementById('tasksCompletedCount').textContent = `0/0`;
-                    progressChart.data.datasets[0].data = [0, 100];
-                    progressChart.update();
-                    return;
-                }
-                const totalTasks = project.tasks.length;
-                const completedTasks = project.tasks.filter(t => t.status === 'done').length;
-                const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-                document.getElementById('progressText').textContent = `${percentage}%`;
-                document.getElementById('tasksCompletedCount').textContent = `${completedTasks}/${totalTasks}`;
-                progressChart.data.datasets[0].data = [percentage, 100 - percentage];
-                progressChart.data.datasets[0].backgroundColor = [getComputedStyle(document.documentElement).getPropertyValue('--accent-color'), getComputedStyle(document.documentElement).getPropertyValue('--bg-tertiary')];
-                progressChart.update();
-            }
-            
-            const confettiCanvas = document.getElementById('confetti-canvas');
-            const confettiCtx = confettiCanvas.getContext('2d');
-            let confettiParticles = [];
-            function triggerConfetti() {
-                confettiCanvas.width = window.innerWidth;
-                confettiCanvas.height = window.innerHeight;
-                confettiParticles = [];
-                const colors = ['#4F46E5', '#16A34A', '#D97706', '#9333EA', '#ffffff'];
-                for (let i = 0; i < 150; i++) {
-                    confettiParticles.push({
-                        x: Math.random() * confettiCanvas.width, y: -20, size: Math.random() * 8 + 4,
-                        color: colors[Math.floor(Math.random() * colors.length)],
-                        speedX: (Math.random() - 0.5) * 10, speedY: Math.random() * 5 + 5,
-                        rotation: Math.random() * 360, rotationSpeed: (Math.random() - 0.5) * 10
-                    });
-                }
-                animateConfetti();
-            }
-            function animateConfetti() {
-                confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
-                confettiParticles.forEach((p, index) => {
-                    p.x += p.speedX; p.y += p.speedY; p.rotation += p.rotationSpeed;
-                    confettiCtx.save();
-                    confettiCtx.translate(p.x, p.y);
-                    confettiCtx.rotate(p.rotation * Math.PI / 180);
-                    confettiCtx.fillStyle = p.color;
-                    confettiCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-                    confettiCtx.restore();
-                    if (p.y > confettiCanvas.height) { confettiParticles.splice(index, 1); }
-                });
-                if (confettiParticles.length > 0) { requestAnimationFrame(animateConfetti); } 
-                else { confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height); }
-            }
-            
-            function applyTheme(theme) {
-                if (theme === 'light') {
-                    document.body.classList.add('light-mode');
-                    themeSwitcher.innerHTML = icons.moon;
-                } else {
-                    document.body.classList.remove('light-mode');
-                    themeSwitcher.innerHTML = icons.sun;
-                }
-                updateProgress();
-            }
-
-            themeSwitcher.addEventListener('click', () => {
-                const newTheme = document.body.classList.contains('light-mode') ? 'dark' : 'light';
-                localStorage.setItem('projectTheme', newTheme);
-                applyTheme(newTheme);
-            });
-            
-            const savedTheme = localStorage.getItem('projectTheme') || 'dark';
-            applyTheme(savedTheme);
-            populateProjectSelector();
-            renderBoard();
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+            menuOpenIcon.classList.toggle('hidden');
+            menuCloseIcon.classList.toggle('hidden');
         });
+        
+        // Close mobile menu when a link is clicked
+        const mobileNavLinks = mobileMenu.querySelectorAll('a');
+        mobileNavLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                mobileMenu.classList.add('hidden');
+                menuOpenIcon.classList.remove('hidden');
+                menuCloseIcon.classList.add('hidden');
+            });
+        });
+
+
+        // Language Switcher Logic
+        const toggleDesktop = document.getElementById('language-toggle-desktop');
+        const toggleMobile = document.getElementById('language-toggle-mobile');
+        const allLangElements = document.querySelectorAll('[data-lang]');
+        const inputs = document.querySelectorAll('input[placeholder-en], textarea[placeholder-en]');
+
+        const setLanguage = (lang) => {
+            allLangElements.forEach(el => {
+                if (el.dataset.lang === lang) {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+
+            inputs.forEach(input => {
+                input.placeholder = input.getAttribute(lang === 'ml' ? 'placeholder-ml' : 'placeholder-en');
+            });
+
+            // Sync toggles
+            const isMalayalam = lang === 'ml';
+            toggleDesktop.checked = isMalayalam;
+            toggleMobile.checked = isMalayalam;
+        };
+        
+        // Set initial language to English
+        setLanguage('en');
+
+        toggleDesktop.addEventListener('change', (event) => {
+            setLanguage(event.target.checked ? 'ml' : 'en');
+        });
+        
+        toggleMobile.addEventListener('change', (event) => {
+            setLanguage(event.target.checked ? 'ml' : 'en');
+        });
+
+        // Scroll Animation Logic
+        const revealElements = document.querySelectorAll('.reveal');
+
+        const revealOnScroll = () => {
+            const windowHeight = window.innerHeight;
+            revealElements.forEach(el => {
+                const elementTop = el.getBoundingClientRect().top;
+                const elementVisible = 150; // Distance from bottom of viewport to trigger animation
+
+                if (elementTop < windowHeight - elementVisible) {
+                    el.classList.add('visible');
+                }
+            });
+        };
+
+        window.addEventListener('scroll', revealOnScroll);
+        // Initial check in case elements are already in view
+        revealOnScroll();
+
     </script>
 </body>
 </html>
